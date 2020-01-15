@@ -10,6 +10,7 @@ import numpy
 import os
 import sys
 import random
+import time
 import itertools
 
 import torch
@@ -275,6 +276,7 @@ class Logger(object):
 
 
 def data_iterator(batch_size=16):
+    kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
     data_loader = torch.utils.data.DataLoader(
         datasets.MNIST(os.path.expanduser('data/mnist'), download=True, train=False, transform=transforms.Compose([
                            transforms.ToTensor(),
@@ -282,14 +284,14 @@ def data_iterator(batch_size=16):
                            lambda x: x.round(),  # binarize
                            # transforms.Normalize((0.1307,), (0.3081,)),
                        ])),
-        batch_size=batch_size, shuffle=True)
+        batch_size=batch_size, shuffle=True, **kwargs)
     while True:
         for data, target in data_loader:
-            data = data.to(device)
             yield Variable(data)
 
 
 def main():
+    tStart = time.time()
     gflags.DEFINE_boolean("verbose", False, "Set to True for additional log output.")
     gflags.DEFINE_integer("max_iterations", 100000, "Number of total training steps.")
     gflags.DEFINE_integer("batch_size", 16, "Batch size.")
@@ -319,9 +321,11 @@ def main():
         model.train()
 
         model.wake()
-        recognition_outputs, generation_bias_loss, generative_loss = model.forward(next(it))
+        data = next(it).to(device)
+        recognition_outputs, generation_bias_loss, generative_loss = model.forward(data)
 
         model.sleep()
+        data = next(it).to(device)
         # recognition_loss, generation_bias_output, generative_outputs = model.forward(next(it))
         # begin modified by Joaquin 120319
         # pdb.set_trace()
@@ -357,7 +361,8 @@ def main():
 
         if plot_every > 0 and step % plot_every == 0:
             logger.log(step, generation_bias_loss, generative_loss, recognition_loss, total_loss)
-
+    elapsedTime = time.time()-tStart
+    print("Elapsed time: {:.2f} seconds".format(elapsedTime))
 
 if __name__ == '__main__':
     main()
