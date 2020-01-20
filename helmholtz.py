@@ -24,16 +24,13 @@ from torchvision import datasets, transforms
 
 import gflags
 
-
 try:
     import visdom
     USING_VISDOM = True
 except:
     USING_VISDOM = False
 
-
 FLAGS = gflags.FLAGS
-
 
 if torch.cuda.is_available():
     device = torch.device("cuda")
@@ -321,11 +318,10 @@ def main():
         model.train()
 
         model.wake()
-        data = next(it).to(device)
-        recognition_outputs, generation_bias_loss, generative_loss = model.forward(data)
+        aBatch = next(it).to(device)
+        recognition_outputs, generation_bias_loss, generative_loss = model.forward(aBatch)
 
         model.sleep()
-        data = next(it).to(device)
         # recognition_loss, generation_bias_output, generative_outputs = model.forward(next(it))
         # begin modified by Joaquin 120319
         # pdb.set_trace()
