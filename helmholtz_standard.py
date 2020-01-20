@@ -10,6 +10,7 @@ import numpy
 import os
 import sys
 import random
+import time
 import itertools
 
 import torch
@@ -24,16 +25,18 @@ from torchvision import datasets, transforms
 
 import gflags
 
-
 try:
     import visdom
     USING_VISDOM = True
 except:
     USING_VISDOM = False
 
-
 FLAGS = gflags.FLAGS
 
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+else:
+    device = torch.device("cpu")
 
 class HelmholtzMachine(nn.Module):
     """
@@ -48,7 +51,7 @@ class HelmholtzMachine(nn.Module):
 
 	### check tht there at at least 3 layers
         assert len(layers) >= 3, "We require at least two sets of weights. |I| = 1, |J| >= 1, |K| = 1"
-        
+
         self.layers = layers
         self.num_layers = len(self.layers) - 1
 
@@ -194,7 +197,7 @@ class HelmholtzMachine(nn.Module):
         recognition_loss = self._run_sleep_recognition(generation_bias_output, generative_outputs)
 
         return recognition_loss, generation_bias_output, generative_outputs
-        
+
     def forward(self, x):
         if self._awake:
             out = self.run_wake(x)
@@ -270,6 +273,7 @@ class Logger(object):
 
 
 def data_iterator(batch_size=16):
+    kwargs = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
     data_loader = torch.utils.data.DataLoader(
         datasets.MNIST(os.path.expanduser('data/mnist'), download=True, train=False, transform=transforms.Compose([
                            transforms.ToTensor(),
@@ -277,13 +281,14 @@ def data_iterator(batch_size=16):
                            lambda x: x.round(),  # binarize
                            # transforms.Normalize((0.1307,), (0.3081,)),
                        ])),
-        batch_size=batch_size, shuffle=True)
+        batch_size=batch_size, shuffle=True, **kwargs)
     while True:
         for data, target in data_loader:
             yield Variable(data)
 
 
 def main():
+    tStart = time.time()
     gflags.DEFINE_boolean("verbose", False, "Set to True for additional log output.")
     # used to be 100000
     gflags.DEFINE_integer("max_iterations", 100000, "Number of total training steps.")
@@ -303,6 +308,7 @@ def main():
     logger = Logger(USING_VISDOM)
 
     model = HelmholtzMachine()
+    model.to(device)
 
     print(model)
 
@@ -316,13 +322,14 @@ def main():
     # main loop
     for step in range(iterations):
         model.train()
-        
+
         model.wake()
-        aBatch = next(it)
+        aBatch = next(it).to(device)
         recognition_outputs, generation_bias_loss, generative_loss = model.forward(aBatch)
 
         model.sleep()
-        recognition_loss, generation_bias_output, generative_outputs = model.forward(next(it))
+        aBatch = next(it).to(device)
+        recognition_loss, generation_bias_output, generative_outputs = model.forward(aBatch)
 
         total_loss = 0.0
         total_loss += generation_bias_loss
@@ -357,6 +364,8 @@ def main():
 
         if plot_every > 0 and step % plot_every == 0:
             logger.log(step, generation_bias_loss, generative_loss, recognition_loss, total_loss)
+    elapsedTime = time.time()-tStart
+    print("Elapsed time: {:.2f} seconds".format(elapsedTime))
 
     # plot loss
     printLoss(steps_save, loss_save, filename="figd/loss.png")
