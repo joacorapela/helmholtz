@@ -25,13 +25,11 @@ from torchvision import datasets, transforms
 
 import gflags
 
-
 try:
     import visdom
     USING_VISDOM = True
 except:
     USING_VISDOM = False
-
 
 FLAGS = gflags.FLAGS
 
@@ -201,7 +199,6 @@ class HelmholtzMachine(nn.Module):
         return recognition_loss, generation_bias_output, generative_outputs
 
     def forward(self, x):
-        # pdb.set_trace()
         if self._awake:
             out = self.run_wake(x)
         else:
@@ -331,15 +328,7 @@ def main():
         recognition_outputs, generation_bias_loss, generative_loss = model.forward(aBatch)
 
         model.sleep()
-        # recognition_loss, generation_bias_output, generative_outputs = model.forward(next(it))
-        # begin modified by Joaquin 120319
-        # pdb.set_trace()
         recognition_loss, generation_bias_output, generative_outputs = model.forward(recognition_outputs[1])
-        # end modified by Joaquin 120319
-
-        # printImageD(next(it), filename="fignd/inputImage.png")
-        # printImageD(generative_outputs[1], filename="fignd/generativeOutput.png")
-        # printLatent(recognition_outputs[1])
 
         total_loss = 0.0
         total_loss += generation_bias_loss
@@ -366,7 +355,7 @@ def main():
 
 	    # number of steps and loss
             steps_save.append(step)
-            loss_save.append(float(total_loss.detach().numpy()))
+            loss_save.append(float(total_loss))
 
         if vis_every > 0 and step % vis_every == 0:
             # logger.visualize(generative_outputs[-1])
@@ -397,8 +386,9 @@ def main():
     # pdb.set_trace()
 
 def printImageD(aBatchImages, filename=None):
+    aBatchImages = aBatchImages.cpu()
     # get number of plots, and choose how they are arranged
-    nplots = aBatchImages.numpy().shape[0]
+    nplots = aBatchImages.shape[0]
     nx = 4
     ny = int((nplots-0.5)/nx) + 1
     fig, axs = plt.subplots(nx, ny)
@@ -420,6 +410,7 @@ def printImageD(aBatchImages, filename=None):
     # plt.show()
 
 def printLatent(aBatchLatents, marker='+', filename=None):
+    aBatchLatents = aBatchLatents.cpu()
     # get number of plots, and choose how they are arranged
     nplots = aBatchLatents.numpy().shape[0]
     nx = 4
@@ -450,5 +441,4 @@ def printLoss(steps_save, loss_save, filename=None):
         plt.savefig(filename)
 
 if __name__ == '__main__':
-
     main()

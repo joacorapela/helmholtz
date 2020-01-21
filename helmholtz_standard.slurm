@@ -10,5 +10,5 @@ printenv | grep CUDA
 
 # export MODULEPATH=/nfs/apps/Modules/modulefiles:$MODULEPATH
 # module load tensorflow-gpu
-python helmholtz_standard.py --max_iterations 10000
+python helmholtz_standard.py --max_iterations 1000
 

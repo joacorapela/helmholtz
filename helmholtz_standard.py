@@ -290,7 +290,7 @@ def data_iterator(batch_size=16):
 def main():
     tStart = time.time()
     gflags.DEFINE_boolean("verbose", False, "Set to True for additional log output.")
-    # used to be 100000
+    ### used to be 100000
     gflags.DEFINE_integer("max_iterations", 100000, "Number of total training steps.")
     gflags.DEFINE_integer("batch_size", 16, "Batch size.")
     gflags.DEFINE_integer("log_every", 100, "Log every N steps.")
@@ -356,7 +356,7 @@ def main():
 
 	    # number of steps and loss
             steps_save.append(step)
-            loss_save.append(float(total_loss.detach().numpy()))
+            loss_save.append(float(total_loss))
 
         if vis_every > 0 and step % vis_every == 0:
             # logger.visualize(generative_outputs[-1])
@@ -364,6 +364,7 @@ def main():
 
         if plot_every > 0 and step % plot_every == 0:
             logger.log(step, generation_bias_loss, generative_loss, recognition_loss, total_loss)
+
     elapsedTime = time.time()-tStart
     print("Elapsed time: {:.2f} seconds".format(elapsedTime))
 
@@ -385,10 +386,10 @@ def main():
     # generative_outputs[-1] and aBatch are 16x74 arrays
     # pdb.set_trace()
 
-
 def printImageD(aBatchImages, filename=None):
+    aBatchImages = aBatchImages.cpu()
     # get number of plots, and choose how they are arranged
-    nplots = aBatchImages.numpy().shape[0]
+    nplots = aBatchImages.shape[0]
     nx = 4
     ny = int((nplots-0.5)/nx) + 1
     fig, axs = plt.subplots(nx, ny)
@@ -410,6 +411,7 @@ def printImageD(aBatchImages, filename=None):
     # plt.show()
 
 def printLatent(aBatchLatents, marker='+', filename=None):
+    aBatchLatents = aBatchLatents.cpu()
     # get number of plots, and choose how they are arranged
     nplots = aBatchLatents.numpy().shape[0]
     nx = 4
@@ -438,7 +440,6 @@ def printLoss(steps_save, loss_save, filename=None):
     # save to file
     if filename is not None:
         plt.savefig(filename)
-
 
 if __name__ == '__main__':
     main()
