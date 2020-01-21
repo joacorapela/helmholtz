@@ -32,11 +32,6 @@ except:
 
 FLAGS = gflags.FLAGS
 
-if torch.cuda.is_available():
-    device = torch.device("cuda")
-else:
-    device = torch.device("cpu")
-
 class HelmholtzMachine(nn.Module):
     """
     A Helmholtz machine trained with the Wake Sleep algorithm.
@@ -296,6 +291,7 @@ def main():
     gflags.DEFINE_integer("vis_every", 1000, "Visualize examples every N steps.")
     gflags.DEFINE_integer("plot_every", 100, "Plot loss every N steps.")
     gflags.DEFINE_float("learning_rate", 0.01, "Learning rate.")
+    gflags.DEFINE_string("device", "cuda", "Device (cpu|cuda).")
 
     FLAGS(sys.argv)
 
@@ -304,8 +300,13 @@ def main():
     log_every = FLAGS.log_every
     vis_every = FLAGS.vis_every
     plot_every = FLAGS.plot_every
+    deviceName = FLAGS.device
     logger = Logger(USING_VISDOM)
 
+    if not torch.cuda.is_available():
+        deviceName = "cpu"
+
+    device = torch.device(deviceName)
     model = HelmholtzMachine()
     model.to(device)
 
@@ -358,7 +359,7 @@ def main():
         if plot_every > 0 and step % plot_every == 0:
             logger.log(step, generation_bias_loss, generative_loss, recognition_loss, total_loss)
     elapsedTime = time.time()-tStart
-    print("Elapsed time: {:.2f} seconds".format(elapsedTime))
+    print("Elapsed time on {:s}: {:.2f} seconds".format(deviceName, elapsedTime))
 
 if __name__ == '__main__':
     main()
